@@ -1,107 +1,351 @@
 import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
+import net from "node:net";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
+export const dynamic = "force-dynamic";
 
-const API_KEY = process.env.RENDERER_API_KEY;
+const RATE_LIMIT = 1;
+const WINDOW_MS = 5_000;
+const MAX_HTML_BYTES = 512 * 1024;
+const MAX_CSS_BYTES = 512 * 1024;
+const MAX_CONCURRENT_RENDERS = 2;
 
-export async function GET() {
-  return Response.json({
-    service: "MCQ HTML/CSS Renderer",
-    status: "ok",
+const state = (globalThis.__HTML_TO_IMAGE_API__ ??= {
+  rateLimit: new Map(),
+  activeRenders: 0,
+});
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+function json(data, status = 200, headers = {}) {
+  return Response.json(data, {
+    status,
+    headers: {
+      ...CORS_HEADERS,
+      "Cache-Control": "no-store",
+      ...headers,
+    },
   });
 }
 
-export async function POST(request) {
+function getClientIp(request) {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0].trim();
+
+  return (
+    request.headers.get("x-real-ip") ||
+    request.headers.get("x-vercel-forwarded-for") ||
+    "unknown"
+  );
+}
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const current = state.rateLimit.get(ip);
+
+  if (!current || now >= current.resetAt) {
+    state.rateLimit.set(ip, { resetAt: now + WINDOW_MS });
+    return { allowed: true, retryAfter: 0 };
+  }
+
+  return {
+    allowed: false,
+    retryAfter: Math.max(1, Math.ceil((current.resetAt - now) / 1000)),
+  };
+}
+
+function cleanupRateLimitStore() {
+  const now = Date.now();
+
+  for (const [ip, entry] of state.rateLimit) {
+    if (now >= entry.resetAt) state.rateLimit.delete(ip);
+  }
+
+  if (state.rateLimit.size > 10_000) {
+    const removeCount = state.rateLimit.size - 5_000;
+    let removed = 0;
+
+    for (const ip of state.rateLimit.keys()) {
+      state.rateLimit.delete(ip);
+      if (++removed >= removeCount) break;
+    }
+  }
+}
+
+function rateLimitHeaders(retryAfter = 5) {
+  return {
+    "RateLimit-Limit": String(RATE_LIMIT),
+    "RateLimit-Remaining": "0",
+    "RateLimit-Reset": String(retryAfter),
+    ...(retryAfter ? { "Retry-After": String(retryAfter) } : {}),
+  };
+}
+
+function byteLength(value) {
+  return Buffer.byteLength(value, "utf8");
+}
+
+function isPrivateHostname(hostname) {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+
+  if (
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    host.endsWith(".local") ||
+    host === "0.0.0.0" ||
+    host === "::" ||
+    host === "::1"
+  ) {
+    return true;
+  }
+
+  const type = net.isIP(host);
+
+  if (type === 4) {
+    const [a, b] = host.split(".").map(Number);
+
+    return (
+      a === 10 ||
+      a === 127 ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168)
+    );
+  }
+
+  if (type === 6) {
+    return (
+      host === "::1" ||
+      host.startsWith("fc") ||
+      host.startsWith("fd") ||
+      host.startsWith("fe8") ||
+      host.startsWith("fe9") ||
+      host.startsWith("fea") ||
+      host.startsWith("feb")
+    );
+  }
+
+  return false;
+}
+
+function isAllowedAssetUrl(rawUrl) {
   try {
-    if (!API_KEY) {
-      return Response.json(
-        { error: "RENDERER_API_KEY is not configured" },
-        { status: 500 }
-      );
-    }
+    const url = new URL(rawUrl);
 
-    const suppliedKey = request.headers.get("x-api-key");
+    if (url.protocol === "data:" || url.protocol === "blob:") return true;
+    if (url.protocol !== "http:" && url.protocol !== "https:") return false;
 
-    if (suppliedKey !== API_KEY) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    return !isPrivateHostname(url.hostname);
+  } catch {
+    return false;
+  }
+}
 
-    const body = await request.json();
-
-    const html = String(body.html ?? "");
-    const css = String(body.css ?? "");
-    const width = Math.min(Math.max(Number(body.width) || 1080, 100), 3000);
-    const height = Math.min(Math.max(Number(body.height) || 1350, 100), 4000);
-
-    if (!html) {
-      return Response.json({ error: "html is required" }, { status: 400 });
-    }
-
-    const browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: {
-        width,
-        height,
-        deviceScaleFactor: 1,
-      },
-      executablePath: await chromium.executablePath(),
-      headless: true,
-    });
-
-    try {
-      const page = await browser.newPage();
-
-      const document = `<!doctype html>
+function buildDocument(html, css, width, height) {
+  return `<!doctype html>
 <html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=${width}, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline' https: data:; img-src https: data: blob:; font-src https: data: blob:; media-src data: blob:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none';">
 <style>
-html,body {
-  margin:0;
-  padding:0;
-  width:${width}px;
-  height:${height}px;
-  overflow:hidden;
-}
-*,*::before,*::after { box-sizing:border-box; }
+html,body{margin:0;padding:0;width:${width}px;height:${height}px;overflow:hidden}
+*,*::before,*::after{box-sizing:border-box}
 ${css}
 </style>
 </head>
 <body>${html}</body>
 </html>`;
+}
 
-      await page.setContent(document, {
-        waitUntil: "networkidle0",
-      });
+export async function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS_HEADERS });
+}
 
-      const image = await page.screenshot({
-        type: "png",
-        fullPage: false,
-      });
+export async function GET() {
+  return json({
+    service: "HTML TO IMAGE API",
+    status: "ok",
+    version: "1.1.0",
+    authentication: "none",
+    rateLimit: "1 request / 5 seconds / IP",
+  });
+}
 
-      return new Response(image, {
-        status: 200,
-        headers: {
-          "Content-Type": "image/png",
-          "Content-Disposition": 'inline; filename="mcq.png"',
-          "Cache-Control": "no-store",
-        },
-      });
-    } finally {
-      await browser.close();
-    }
+export async function POST(request) {
+  const ip = getClientIp(request);
+  const limit = checkRateLimit(ip);
+  cleanupRateLimitStore();
+
+  if (!limit.allowed) {
+    return json(
+      {
+        error: "Too many requests",
+        message: "Rate limit: 1 request every 5 seconds per IP.",
+        retryAfter: limit.retryAfter,
+      },
+      429,
+      rateLimitHeaders(limit.retryAfter)
+    );
+  }
+
+  let body;
+
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "Invalid JSON body" }, 400, rateLimitHeaders());
+  }
+
+  const html = typeof body?.html === "string" ? body.html : "";
+  const css = typeof body?.css === "string" ? body.css : "";
+
+  if (!html) {
+    return json(
+      { error: "html is required and must be a string" },
+      400,
+      rateLimitHeaders()
+    );
+  }
+
+  if (byteLength(html) > MAX_HTML_BYTES) {
+    return json(
+      { error: "html is too large", maxBytes: MAX_HTML_BYTES },
+      413,
+      rateLimitHeaders()
+    );
+  }
+
+  if (byteLength(css) > MAX_CSS_BYTES) {
+    return json(
+      { error: "css is too large", maxBytes: MAX_CSS_BYTES },
+      413,
+      rateLimitHeaders()
+    );
+  }
+
+  const widthValue = Number(body?.width);
+  const heightValue = Number(body?.height);
+
+  const width = Number.isFinite(widthValue)
+    ? Math.min(Math.max(Math.round(widthValue), 100), 3000)
+    : 1080;
+  const height = Number.isFinite(heightValue)
+    ? Math.min(Math.max(Math.round(heightValue), 100), 4000)
+    : 1350;
+
+  if (state.activeRenders >= MAX_CONCURRENT_RENDERS) {
+    return json(
+      {
+        error: "Renderer busy",
+        message: "Too many renders are running. Try again shortly.",
+      },
+      503,
+      { "Retry-After": "2" }
+    );
+  }
+
+  state.activeRenders++;
+  let browser;
+
+  try {
+    browser = await puppeteer.launch({
+      args: [
+        ...chromium.args,
+        "--disable-dev-shm-usage",
+        "--no-first-run",
+        "--no-default-browser-check",
+      ],
+      defaultViewport: { width, height, deviceScaleFactor: 1 },
+      executablePath: await chromium.executablePath(),
+      headless: true,
+    });
+
+    const page = await browser.newPage();
+    await page.setRequestInterception(true);
+
+    page.on("request", (request) => {
+      const url = request.url();
+
+      if (isAllowedAssetUrl(url)) {
+        request.continue().catch(() => {});
+      } else {
+        request.abort("blockedbyclient").catch(() => {});
+      }
+    });
+
+    page.on("pageerror", (error) => {
+      console.warn("Page error:", error.message);
+    });
+
+    await page.setDefaultNavigationTimeout(15_000);
+    await page.setDefaultTimeout(15_000);
+
+    await page.setContent(buildDocument(html, css, width, height), {
+      waitUntil: "domcontentloaded",
+    });
+
+    await Promise.race([
+      page.evaluate(async () => {
+        if (document.fonts?.ready) await document.fonts.ready;
+
+        await Promise.all(
+          Array.from(document.images).map((image) => {
+            if (image.complete) return Promise.resolve();
+
+            return new Promise((resolve) => {
+              image.addEventListener("load", resolve, { once: true });
+              image.addEventListener("error", resolve, { once: true });
+            });
+          })
+        );
+      }),
+      new Promise((resolve) => setTimeout(resolve, 5_000)),
+    ]);
+
+    const image = await page.screenshot({
+      type: "png",
+      fullPage: false,
+    });
+
+    return new Response(image, {
+      status: 200,
+      headers: {
+        ...CORS_HEADERS,
+        ...rateLimitHeaders(),
+        "Content-Type": "image/png",
+        "Content-Disposition": 'inline; filename="render.png"',
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
   } catch (error) {
     console.error("Renderer error:", error);
 
-    return Response.json(
+    return json(
       {
         error: "Rendering failed",
-        message: error?.message || String(error),
+        message:
+          process.env.NODE_ENV === "development"
+            ? error?.message || String(error)
+            : "Unable to render the supplied HTML/CSS.",
       },
-      { status: 500 }
+      500,
+      rateLimitHeaders()
     );
+  } finally {
+    if (browser) {
+      try {
+        await browser.close();
+      } catch {}
+    }
+
+    state.activeRenders--;
   }
 }
