@@ -1,9 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: [
-      "@sparticuz/chromium",
-      "puppeteer-core"
+  serverExternalPackages: [
+    "@sparticuz/chromium",
+    "puppeteer-core"
+  ],
+  
+  outputFileTracingIncludes: {
+    "/api/render": [
+      "./node_modules/@sparticuz/chromium/bin/**/*"
     ]
   }
 };
