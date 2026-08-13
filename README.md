@@ -1,40 +1,36 @@
-# MCQ HTML/CSS → PNG — Vercel + FastAPI
+# MCQ HTML/CSS -> PNG — Vercel + FastAPI
 
-## Project structure
+## Why the previous deployment crashed
 
-api/index.py
-requirements.txt
-vercel.json
+Playwright itself was installed, but Chromium was not available at runtime. The fix is to install Chromium during the Vercel build with:
 
-## Environment variable
+`PLAYWRIGHT_BROWSERS_PATH=0 python -m playwright install chromium`
 
-Set this in Vercel:
+and set `PLAYWRIGHT_BROWSERS_PATH=0` at runtime so Playwright searches the bundled browser.
 
-RENDERER_API_KEY=use-a-long-random-secret
+## Environment variables
 
-## Deploy
+Required:
 
-```bash
-npm i -g vercel
-vercel login
-vercel
-```
+`RENDERER_API_KEY=your-long-random-secret`
 
-For production:
+If Vercel asks to enable Large Functions because the browser bundle is large, enable the Large Functions beta with:
 
-```bash
-vercel --prod
-```
+`VERCEL_SUPPORT_LARGE_FUNCTIONS=1`
 
-The API is:
+and redeploy. Vercel currently supports up to 5 GB for eligible Large Functions on Fluid Compute.
 
-POST https://YOUR-DOMAIN.vercel.app/render
+## Endpoint
+
+POST:
+
+`https://YOUR-DOMAIN.vercel.app/render`
 
 Header:
 
-X-API-Key: your-secret
+`X-API-Key: your-secret`
 
-JSON body:
+JSON:
 
 ```json
 {
@@ -45,20 +41,19 @@ JSON body:
 }
 ```
 
-Response: PNG image bytes.
+Returns PNG bytes.
 
-## n8n HTTP Request
+## n8n
 
-Method: POST
+HTTP Request:
+- Method: POST
+- URL: `https://YOUR-DOMAIN.vercel.app/render`
+- Header: `X-API-Key`
+- Header value: your secret
+- Send Body: JSON
+- Response: File
 
-URL:
-https://YOUR-DOMAIN.vercel.app/render
-
-Headers:
-- X-API-Key: your-secret
-- Content-Type: application/json
-
-Body JSON:
+JSON body:
 
 ```json
 {
@@ -69,12 +64,4 @@ Body JSON:
 }
 ```
 
-Response format: File.
-
-Then connect the HTTP Request node to Telegram "Send Photo" and select the binary property produced by the HTTP Request node.
-
-## Important
-
-This renderer intentionally disables JavaScript inside generated HTML. HTML/CSS, fonts, images and SVG are supported, but arbitrary `<script>` code is not.
-
-Vercel supports FastAPI/Python Functions. Playwright/Chromium makes this heavier than a normal API, so the first request after a cold start can be slower. Vercel's current Python bundle limits are large enough for this approach, but browser automation still consumes CPU/memory.
+Then connect the binary output to Telegram Send Photo.

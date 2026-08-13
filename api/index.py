@@ -1,6 +1,9 @@
 import os
 from contextlib import asynccontextmanager
 
+# Keep Playwright looking inside the deployed function bundle.
+os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", "0")
+
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
@@ -52,15 +55,9 @@ async def health():
 
 
 @app.post("/render")
-async def render(
-    req: RenderRequest,
-    x_api_key: str = Header(default=""),
-):
+async def render(req: RenderRequest, x_api_key: str = Header(default="")):
     if not API_KEY or x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API key")
-
-    if browser is None:
-        raise HTTPException(status_code=503, detail="Renderer is starting")
 
     page = await browser.new_page(
         viewport={"width": req.width, "height": req.height},
@@ -86,14 +83,10 @@ html, body {{
 {req.css}
 </style>
 </head>
-<body>
-{req.html}
-</body>
+<body>{req.html}</body>
 </html>"""
 
         await page.set_content(document, wait_until="load")
-
-        # Give external fonts/images a short chance to finish loading.
         try:
             await page.wait_for_load_state("networkidle", timeout=4000)
         except Exception:
