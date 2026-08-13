@@ -1,59 +1,62 @@
-# MCQ HTML/CSS -> PNG — Vercel + FastAPI
+# MCQ HTML → Image API
 
-## Why the previous deployment crashed
+Next.js API using Puppeteer + `@sparticuz/chromium`, designed for Vercel.
 
-Playwright itself was installed, but Chromium was not available at runtime. The fix is to install Chromium during the Vercel build with:
+## Deploy
 
-`PLAYWRIGHT_BROWSERS_PATH=0 python -m playwright install chromium`
+```bash
+npm install
+npm run build
+vercel --prod
+```
 
-and set `PLAYWRIGHT_BROWSERS_PATH=0` at runtime so Playwright searches the bundled browser.
+Set this Vercel environment variable:
 
-## Environment variables
+```text
+RENDERER_API_KEY=your-long-random-secret
+```
 
-Required:
+## Test
 
-`RENDERER_API_KEY=your-long-random-secret`
+Health:
 
-If Vercel asks to enable Large Functions because the browser bundle is large, enable the Large Functions beta with:
+```text
+GET /api/render
+```
 
-`VERCEL_SUPPORT_LARGE_FUNCTIONS=1`
+Render:
 
-and redeploy. Vercel currently supports up to 5 GB for eligible Large Functions on Fluid Compute.
+```text
+POST /api/render
+X-API-Key: your-secret
+Content-Type: application/json
+```
 
-## Endpoint
-
-POST:
-
-`https://YOUR-DOMAIN.vercel.app/render`
-
-Header:
-
-`X-API-Key: your-secret`
-
-JSON:
+Body:
 
 ```json
 {
-  "html": "<div class='poster'>Hello</div>",
-  "css": ".poster{width:1080px;height:1350px;background:#08090d;color:#fff;}",
+  "html": "<div class='poster'><h1>Hello</h1></div>",
+  "css": ".poster{width:1080px;height:1350px;background:#08090d;color:white;padding:80px}",
   "width": 1080,
   "height": 1350
 }
 ```
 
-Returns PNG bytes.
+The response is a PNG image.
 
 ## n8n
 
-HTTP Request:
-- Method: POST
-- URL: `https://YOUR-DOMAIN.vercel.app/render`
-- Header: `X-API-Key`
-- Header value: your secret
+HTTP Request node:
+
+- Method: `POST`
+- URL: `https://YOUR-DOMAIN.vercel.app/api/render`
+- Header: `X-API-Key: YOUR_SECRET`
+- Header: `Content-Type: application/json`
 - Send Body: JSON
 - Response: File
 
-JSON body:
+JSON:
 
 ```json
 {
@@ -64,4 +67,4 @@ JSON body:
 }
 ```
 
-Then connect the binary output to Telegram Send Photo.
+The output can then go directly to Telegram's Send Photo node.
