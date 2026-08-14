@@ -6,6 +6,7 @@
   "homepage": "https://html-to-image-api-free.vercel.app/",
   "author": {
     "name": "ManjiDevs",
+    "email": "demon@manjitv.in",
     "url": "https://github.com/ManjiDevs"
   },
   "repository": {
@@ -17,10 +18,12 @@
     "node": ">=22"
   },
   "scripts": {
+    "build": "n8n-node build",
+    "build:watch": "tsc --watch",
     "lint": "n8n-node lint",
     "lint:fix": "n8n-node lint --fix",
     "test": "node --test test/*.test.js",
-    "prepublishOnly": "npm run lint && npm test"
+    "prepublishOnly": "npm run lint && npm test && npm run build"
   },
   "keywords": [
     "n8n-community-node-package",
@@ -32,7 +35,7 @@
     "screenshot"
   ],
   "files": [
-    "nodes"
+    "dist"
   ],
   "publishConfig": {
     "access": "public"
@@ -41,15 +44,16 @@
     "n8nNodesApiVersion": 1,
     "strict": true,
     "nodes": [
-      "nodes/HtmlToImage/HtmlToImage.node.js"
+      "dist/nodes/HtmlToImage/HtmlToImage.node.js"
     ]
   },
   "devDependencies": {
     "@n8n/node-cli": "0.40.3",
     "eslint": "9.39.4",
-    "n8n-workflow": "2.32.0"
+    "n8n-workflow": "2.32.0",
+    "typescript": "5.9.3"
   },
   "peerDependencies": {
-    "n8n-workflow": ">=1.0.0"
+    "n8n-workflow": "*"
   }
 }
