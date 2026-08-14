@@ -6,14 +6,11 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
-const RATE_LIMIT = 1;
-const WINDOW_MS = 5_000;
 const MAX_HTML_BYTES = 512 * 1024;
 const MAX_CSS_BYTES = 512 * 1024;
 const MAX_CONCURRENT_RENDERS = 2;
 
 const state = (globalThis.__HTML_TO_IMAGE_API__ ??= {
-  rateLimit: new Map(),
   activeRenders: 0,
 });
 
@@ -34,59 +31,6 @@ function json(data, status = 200, headers = {}) {
   });
 }
 
-function getClientIp(request) {
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
-
-  return (
-    request.headers.get("x-real-ip") ||
-    request.headers.get("x-vercel-forwarded-for") ||
-    "unknown"
-  );
-}
-
-function checkRateLimit(ip) {
-  const now = Date.now();
-  const current = state.rateLimit.get(ip);
-
-  if (!current || now >= current.resetAt) {
-    state.rateLimit.set(ip, { resetAt: now + WINDOW_MS });
-    return { allowed: true, retryAfter: 0 };
-  }
-
-  return {
-    allowed: false,
-    retryAfter: Math.max(1, Math.ceil((current.resetAt - now) / 1000)),
-  };
-}
-
-function cleanupRateLimitStore() {
-  const now = Date.now();
-
-  for (const [ip, entry] of state.rateLimit) {
-    if (now >= entry.resetAt) state.rateLimit.delete(ip);
-  }
-
-  if (state.rateLimit.size > 10_000) {
-    const removeCount = state.rateLimit.size - 5_000;
-    let removed = 0;
-
-    for (const ip of state.rateLimit.keys()) {
-      state.rateLimit.delete(ip);
-      if (++removed >= removeCount) break;
-    }
-  }
-}
-
-function rateLimitHeaders(retryAfter = 5) {
-  return {
-    "RateLimit-Limit": String(RATE_LIMIT),
-    "RateLimit-Remaining": "0",
-    "RateLimit-Reset": String(retryAfter),
-    ...(retryAfter ? { "Retry-After": String(retryAfter) } : {}),
-  };
-}
-
 function byteLength(value) {
   return Buffer.byteLength(value, "utf8");
 }
@@ -101,15 +45,12 @@ function isPrivateHostname(hostname) {
     host === "0.0.0.0" ||
     host === "::" ||
     host === "::1"
-  ) {
-    return true;
-  }
+  ) return true;
 
   const type = net.isIP(host);
 
   if (type === 4) {
     const [a, b] = host.split(".").map(Number);
-
     return (
       a === 10 ||
       a === 127 ||
@@ -137,10 +78,8 @@ function isPrivateHostname(hostname) {
 function isAllowedAssetUrl(rawUrl) {
   try {
     const url = new URL(rawUrl);
-
     if (url.protocol === "data:" || url.protocol === "blob:") return true;
     if (url.protocol !== "http:" && url.protocol !== "https:") return false;
-
     return !isPrivateHostname(url.hostname);
   } catch {
     return false;
@@ -172,62 +111,34 @@ export async function GET() {
   return json({
     service: "HTML TO IMAGE API",
     status: "ok",
-    version: "1.1.0",
+    version: "1.2.0",
     authentication: "none",
-    rateLimit: "1 request / 5 seconds / IP",
+    rateLimit: "none",
   });
 }
 
 export async function POST(request) {
-  const ip = getClientIp(request);
-  const limit = checkRateLimit(ip);
-  cleanupRateLimitStore();
-
-  if (!limit.allowed) {
-    return json(
-      {
-        error: "Too many requests",
-        message: "Rate limit: 1 request every 5 seconds per IP.",
-        retryAfter: limit.retryAfter,
-      },
-      429,
-      rateLimitHeaders(limit.retryAfter)
-    );
-  }
-
   let body;
 
   try {
     body = await request.json();
   } catch {
-    return json({ error: "Invalid JSON body" }, 400, rateLimitHeaders());
+    return json({ error: "Invalid JSON body" }, 400);
   }
 
   const html = typeof body?.html === "string" ? body.html : "";
   const css = typeof body?.css === "string" ? body.css : "";
 
   if (!html) {
-    return json(
-      { error: "html is required and must be a string" },
-      400,
-      rateLimitHeaders()
-    );
+    return json({ error: "html is required and must be a string" }, 400);
   }
 
   if (byteLength(html) > MAX_HTML_BYTES) {
-    return json(
-      { error: "html is too large", maxBytes: MAX_HTML_BYTES },
-      413,
-      rateLimitHeaders()
-    );
+    return json({ error: "html is too large", maxBytes: MAX_HTML_BYTES }, 413);
   }
 
   if (byteLength(css) > MAX_CSS_BYTES) {
-    return json(
-      { error: "css is too large", maxBytes: MAX_CSS_BYTES },
-      413,
-      rateLimitHeaders()
-    );
+    return json({ error: "css is too large", maxBytes: MAX_CSS_BYTES }, 413);
   }
 
   const widthValue = Number(body?.width);
@@ -272,7 +183,6 @@ export async function POST(request) {
 
     page.on("request", (request) => {
       const url = request.url();
-
       if (isAllowedAssetUrl(url)) {
         request.continue().catch(() => {});
       } else {
@@ -294,11 +204,9 @@ export async function POST(request) {
     await Promise.race([
       page.evaluate(async () => {
         if (document.fonts?.ready) await document.fonts.ready;
-
         await Promise.all(
           Array.from(document.images).map((image) => {
             if (image.complete) return Promise.resolve();
-
             return new Promise((resolve) => {
               image.addEventListener("load", resolve, { once: true });
               image.addEventListener("error", resolve, { once: true });
@@ -309,16 +217,12 @@ export async function POST(request) {
       new Promise((resolve) => setTimeout(resolve, 5_000)),
     ]);
 
-    const image = await page.screenshot({
-      type: "png",
-      fullPage: false,
-    });
+    const image = await page.screenshot({ type: "png", fullPage: false });
 
     return new Response(image, {
       status: 200,
       headers: {
         ...CORS_HEADERS,
-        ...rateLimitHeaders(),
         "Content-Type": "image/png",
         "Content-Disposition": 'inline; filename="render.png"',
         "Cache-Control": "no-store",
@@ -336,16 +240,12 @@ export async function POST(request) {
             ? error?.message || String(error)
             : "Unable to render the supplied HTML/CSS.",
       },
-      500,
-      rateLimitHeaders()
+      500
     );
   } finally {
     if (browser) {
-      try {
-        await browser.close();
-      } catch {}
+      try { await browser.close(); } catch {}
     }
-
     state.activeRenders--;
   }
 }
