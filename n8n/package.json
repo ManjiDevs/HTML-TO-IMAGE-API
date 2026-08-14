@@ -45,7 +45,7 @@
     "n8nNodesApiVersion": 1,
     "strict": true,
     "nodes": [
-      "dist/nodes/HtmlToImage/HtmlToImage.node.js"
+      "dist/HtmlToImage.node.js"
     ]
   },
   "devDependencies": {
