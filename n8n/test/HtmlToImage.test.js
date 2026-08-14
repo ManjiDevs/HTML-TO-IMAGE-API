@@ -12,7 +12,7 @@ const source = fs.readFileSync(sourcePath, 'utf8');
 test('package metadata is configured for n8n community nodes', () => {
   assert.equal(packageJson.name, '@manjidevs/n8n-nodes-html-to-image');
   assert.ok(packageJson.keywords.includes('n8n-community-node-package'));
-  assert.equal(packageJson.n8n.nodes[0], 'dist/nodes/HtmlToImage/HtmlToImage.node.js');
+  assert.equal(packageJson.n8n.nodes[0], 'dist/HtmlToImage.node.js');
   assert.equal(packageJson.peerDependencies['n8n-workflow'], '*');
   assert.equal(packageJson.author.email, 'demon@manjitv.in');
   assert.deepEqual(packageJson.files, ['dist']);
