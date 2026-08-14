@@ -4,6 +4,8 @@ Free, open-source **HTML/CSS → PNG API** powered by Next.js, Puppeteer and Chr
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/ManjiDevs/HTML-TO-IMAGE-API)
 
+**Live API:** https://html-to-image-api-free.vercel.app/api/render
+
 Convert HTML + CSS into a PNG with one simple request.
 
 ## Features
@@ -13,7 +15,7 @@ Convert HTML + CSS into a PNG with one simple request.
 - No database
 - No external services
 - Self-hostable
-- Vercel one-click deploy
+- One-click Vercel deployment
 - Custom image dimensions
 - CORS enabled
 - Input and render protections
@@ -27,7 +29,7 @@ No environment variables required.
 ## API
 
 ```http
-POST /api/render
+POST https://html-to-image-api-free.vercel.app/api/render
 Content-Type: application/json
 ```
 
@@ -45,7 +47,7 @@ Returns the PNG directly as `image/png`.
 ### cURL
 
 ```bash
-curl -X POST "https://YOUR-DOMAIN.vercel.app/api/render" \
+curl -X POST "https://html-to-image-api-free.vercel.app/api/render" \
   -H "Content-Type: application/json" \
   --data-raw '{
     "html":"<h1>Hello</h1>",
@@ -60,7 +62,7 @@ curl -X POST "https://YOUR-DOMAIN.vercel.app/api/render" \
 Use an **HTTP Request** node:
 
 ```text
-POST https://YOUR-DOMAIN.vercel.app/api/render
+POST https://html-to-image-api-free.vercel.app/api/render
 Authentication: None
 Content-Type: application/json
 Response Format: File
@@ -108,7 +110,7 @@ If this project is useful, **star the repository**. It helps other developers di
 
 Built and maintained by **ManjiDevs**.
 
-If you use this project in your own app or service, credit the project and the developer team:
+If you use this project in your own app or service, credit the developer team:
 
 **ManjiDevs** — https://github.com/ManjiDevs
 
