@@ -1,5 +1,5 @@
 {
-  "name": "n8n-nodes-html-to-image",
+  "name": "@manjidevs/n8n-nodes-html-to-image",
   "version": "1.0.0",
   "description": "n8n community node for converting HTML and CSS to PNG using the free HTML to Image API.",
   "license": "MIT",
