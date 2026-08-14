@@ -51,6 +51,13 @@ class HtmlToImage {
           description: 'Output height in pixels.',
         },
         {
+          displayName: 'API URL',
+          name: 'apiUrl',
+          type: 'string',
+          default: 'https://html-to-image-api-free.vercel.app/api/render',
+          description: 'Render endpoint. Use your own self-hosted endpoint if preferred.',
+        },
+        {
           displayName: 'Binary Property',
           name: 'binaryPropertyName',
           type: 'string',
@@ -64,7 +71,6 @@ class HtmlToImage {
   async execute() {
     const items = this.getInputData();
     const returnData = [];
-    const apiUrl = 'https://html-to-image-api-free.vercel.app/api/render';
 
     for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
       try {
@@ -73,6 +79,7 @@ class HtmlToImage {
         const css = this.getNodeParameter('css', itemIndex);
         const width = this.getNodeParameter('width', itemIndex);
         const height = this.getNodeParameter('height', itemIndex);
+        const apiUrl = this.getNodeParameter('apiUrl', itemIndex);
         const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex);
 
         const response = await this.helpers.httpRequest({
