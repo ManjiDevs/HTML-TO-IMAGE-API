@@ -1,51 +1,70 @@
 # HTML TO IMAGE API
 
-Free, open-source **HTML/CSS → PNG rendering API** built with Next.js, Puppeteer, and `@sparticuz/chromium` for Vercel.
+Free and open-source **HTML/CSS → PNG rendering API** built with Next.js, Puppeteer, and `@sparticuz/chromium`.
+
+Convert HTML and CSS into a PNG image through a simple HTTP API.
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/ManjiDevs/HTML-TO-IMAGE-API)
 
 ## Features
 
-- Free to use
+- Free and open source
 - No API key
 - No authentication
-- `POST /api/render`
+- No database
+- No external rendering service
+- Self-hostable
+- One-click Vercel deployment
 - HTML + CSS → PNG
 - Custom width and height
 - CORS enabled
-- `1 request / 5 seconds / IP` rate limit
+- Payload limits
+- Concurrent render protection
 - Basic SSRF protection for remote assets
-- HTML/CSS payload limits
-- Limited concurrent Chromium renders
-- Vercel compatible
-- No database or external service required
+- Vercel-compatible Chromium
+
+## Quick Deploy
+
+Deploy your own instance to Vercel:
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/ManjiDevs/HTML-TO-IMAGE-API)
+
+After deployment, your API will be available at:
+
+```text
+https://YOUR-PROJECT.vercel.app/api/render
+```
+
+No environment variables or API keys are required.
 
 ## API
 
-### Health check
+### Health Check
 
-```text
+```http
 GET /api/render
 ```
 
-Example response:
+Example:
 
 ```json
 {
   "service": "HTML TO IMAGE API",
   "status": "ok",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "authentication": "none",
-  "rateLimit": "1 request / 5 seconds / IP"
+  "rateLimit": "none"
 }
 ```
 
-### Render
+### Render HTML
 
-```text
-POST https://YOUR-DOMAIN.vercel.app/api/render
+```http
+POST /api/render
 Content-Type: application/json
 ```
 
-Body:
+Request:
 
 ```json
 {
@@ -56,7 +75,13 @@ Body:
 }
 ```
 
-The response is a PNG image with `Content-Type: image/png`.
+Response:
+
+```http
+Content-Type: image/png
+```
+
+The PNG bytes are returned directly.
 
 ## cURL
 
@@ -71,8 +96,6 @@ curl -X POST "https://YOUR-DOMAIN.vercel.app/api/render" \
   }' \
   --output test.png
 ```
-
-No `X-API-Key` header is required.
 
 ## n8n
 
@@ -100,36 +123,35 @@ JSON body:
 }
 ```
 
-The binary output can be passed directly to Telegram's **Send Photo** node.
+Pass the binary output directly to Telegram `Send Photo`, Discord, storage, or another service.
 
 ## Limits
 
 | Resource | Limit |
 |---|---:|
-| Rate | 1 request / 5 seconds / IP |
 | HTML | 512 KB |
 | CSS | 512 KB |
 | Width | 100–3000 px |
 | Height | 100–4000 px |
-| Concurrent renders per warm instance | 2 |
+| Concurrent renders | 2 per warm function instance |
 
-When the rate limit is exceeded, the API returns `429 Too Many Requests` with a `Retry-After` header.
+There is **no application-level rate limit**. This project is intended primarily for self-hosting, where the operator controls infrastructure and can add rate limiting at the reverse proxy, CDN, firewall, or hosting layer if needed.
 
 ## Remote Assets
 
-Remote `http://` and `https://` images/fonts are supported when they are publicly reachable.
+Public `http://` and `https://` images and fonts can be used in generated HTML/CSS.
 
-Requests to obvious local/private addresses such as `localhost`, loopback, RFC1918 private IPv4 ranges, link-local addresses, and private IPv6 ranges are blocked.
+Obvious local/private destinations such as `localhost`, loopback, RFC1918 private IPv4 ranges, link-local addresses, and private IPv6 ranges are blocked.
 
-For security, scripts, frames, objects, and arbitrary network connections are disabled by the renderer's Content Security Policy.
+## Security
 
-## Rate Limiting Architecture
+The renderer runs submitted HTML/CSS inside Chromium.
 
-The API intentionally has **no database** and no external rate-limit service.
+The generated document uses a Content Security Policy that disables scripts, frames, objects, arbitrary connections, and private/local asset destinations. The API does not require authentication because it is designed to be deployed and controlled by the operator.
 
-The rate limiter stores timestamps in the Node.js process memory. This works for a simple, low-cost deployment, but Vercel can run multiple serverless instances. Therefore, the `1 request / 5 seconds / IP` limit is enforced per warm function instance rather than as a globally synchronized counter.
+Do not submit passwords, API keys, private tokens, credentials, or confidential information in HTML/CSS.
 
-For strict global rate limiting at high traffic, use a shared store such as Redis or Vercel's rate-limiting/firewall infrastructure.
+If you expose a self-hosted instance publicly, add your own rate limiting and access controls at the infrastructure layer when required.
 
 ## Local Development
 
@@ -166,15 +188,27 @@ curl -X POST "http://localhost:3000/api/render" \
 
 ## Deploy to Vercel
 
+### One click
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/ManjiDevs/HTML-TO-IMAGE-API)
+
+### CLI
+
 ```bash
 npm install
-npm run build
+git clone https://github.com/ManjiDevs/HTML-TO-IMAGE-API.git
+cd HTML-TO-IMAGE-API
+npm install
 vercel --prod
 ```
 
 No environment variables are required.
 
-The project already configures `@sparticuz/chromium` and Puppeteer for the Vercel Node.js runtime.
+## Self-Hosting
+
+You can run the project on your own server or hosting provider that supports the Next.js Node.js runtime and Chromium dependencies.
+
+The project has no database and no required external service.
 
 ## Architecture
 
@@ -185,8 +219,8 @@ Client
   ▼
 Next.js Route Handler
   │
-  ├── IP rate limit
-  ├── Input limits
+  ├── Input validation
+  ├── Payload limits
   ├── Asset / SSRF checks
   └── Render concurrency guard
   │
@@ -203,11 +237,18 @@ PNG
 Client / n8n / Bot
 ```
 
-## Security
+## Use Cases
 
-This service executes user-supplied HTML and CSS in Chromium. Do not submit passwords, API keys, private tokens, or confidential information.
-
-The API does not execute arbitrary JavaScript from submitted HTML and blocks obvious private-network asset URLs. No security mechanism should be treated as a substitute for keeping the service patched and monitoring abuse.
+- MCQ and educational posters
+- Social media graphics
+- Code snippets as images
+- Automated reports
+- Certificates
+- Quote cards
+- Telegram and Discord bots
+- n8n workflows
+- Dynamic HTML screenshots
+- Developer tools
 
 ## License
 
