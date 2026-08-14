@@ -98,6 +98,19 @@ export default function Home() {
       </footer>
 
       <style jsx>{`
+        :global(html),
+        :global(body) {
+          margin: 0;
+          padding: 0;
+          width: 100%;
+          min-height: 100%;
+          background: #08090d;
+        }
+
+        :global(body) {
+          overflow-x: hidden;
+        }
+
         * { box-sizing: border-box; }
         .page { min-height: 100vh; background:#08090d; color:#f4f4f5; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; padding:0 5vw; background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px); background-size:60px 60px; }
         .nav { height:78px; max-width:1250px; margin:auto; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #202127; }
