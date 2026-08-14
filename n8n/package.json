@@ -1,9 +1,27 @@
 {
   "name": "@manjidevs/n8n-nodes-html-to-image",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "n8n community node for converting HTML and CSS to PNG using the free HTML to Image API.",
   "license": "MIT",
-  "main": "nodes/HtmlToImage/HtmlToImage.node.js",
+  "homepage": "https://html-to-image-api-free.vercel.app/",
+  "author": {
+    "name": "ManjiDevs",
+    "url": "https://github.com/ManjiDevs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ManjiDevs/HTML-TO-IMAGE-API.git",
+    "directory": "n8n"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "lint": "n8n-node lint",
+    "lint:fix": "n8n-node lint --fix",
+    "test": "node --test test/*.test.js",
+    "prepublishOnly": "npm run lint && npm test"
+  },
   "keywords": [
     "n8n-community-node-package",
     "n8n-nodes",
@@ -16,10 +34,20 @@
   "files": [
     "nodes"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "n8n": {
+    "n8nNodesApiVersion": 1,
+    "strict": true,
     "nodes": [
       "nodes/HtmlToImage/HtmlToImage.node.js"
     ]
+  },
+  "devDependencies": {
+    "@n8n/node-cli": "0.40.3",
+    "eslint": "9.39.4",
+    "n8n-workflow": "2.32.0"
   },
   "peerDependencies": {
     "n8n-workflow": ">=1.0.0"
