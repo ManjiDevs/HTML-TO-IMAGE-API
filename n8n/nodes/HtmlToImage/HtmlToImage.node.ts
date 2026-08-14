@@ -10,11 +10,15 @@ export class HtmlToImage implements INodeType {
   description: INodeTypeDescription = {
     displayName: 'HTML to Image',
     name: 'htmlToImage',
-    icon: 'file:htmlToImage.svg',
+    icon: {
+      light: 'file:htmlToImage.svg',
+      dark: 'file:htmlToImage.svg',
+    },
     group: ['transform'],
     version: 1,
     subtitle: 'Convert HTML/CSS to PNG',
     description: 'Render HTML and CSS as a PNG using the ManjiDevs HTML to Image API',
+    usableAsTool: true,
     defaults: {
       name: 'HTML to Image',
     },
@@ -28,7 +32,7 @@ export class HtmlToImage implements INodeType {
         typeOptions: { rows: 8 },
         default: '<div class="card">Hello</div>',
         required: true,
-        description: 'HTML markup to render.',
+        description: 'HTML markup to render',
       },
       {
         displayName: 'CSS',
@@ -38,7 +42,7 @@ export class HtmlToImage implements INodeType {
         default:
           '.card { width: 1080px; height: 1350px; display: grid; place-items: center; background: #08090d; color: white; font: 700 72px Arial; }',
         required: true,
-        description: 'CSS applied to the HTML.',
+        description: 'CSS applied to the HTML',
       },
       {
         displayName: 'Width',
@@ -46,7 +50,7 @@ export class HtmlToImage implements INodeType {
         type: 'number',
         typeOptions: { minValue: 100, maxValue: 3000 },
         default: 1080,
-        description: 'Output width in pixels.',
+        description: 'Output width in pixels',
       },
       {
         displayName: 'Height',
@@ -54,21 +58,21 @@ export class HtmlToImage implements INodeType {
         type: 'number',
         typeOptions: { minValue: 100, maxValue: 4000 },
         default: 1350,
-        description: 'Output height in pixels.',
+        description: 'Output height in pixels',
       },
       {
         displayName: 'API URL',
         name: 'apiUrl',
         type: 'string',
         default: 'https://html-to-image-api-free.vercel.app/api/render',
-        description: 'Render endpoint. Use your own self-hosted endpoint if preferred.',
+        description: 'Render endpoint. Use your own self-hosted endpoint if preferred',
       },
       {
         displayName: 'Binary Property',
         name: 'binaryPropertyName',
         type: 'string',
         default: 'data',
-        description: 'Property name where the generated PNG will be stored.',
+        description: 'Property name where the generated PNG will be stored',
       },
     ],
   };
