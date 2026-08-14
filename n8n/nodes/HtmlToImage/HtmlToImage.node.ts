@@ -65,14 +65,14 @@ export class HtmlToImage implements INodeType {
         name: 'apiUrl',
         type: 'string',
         default: 'https://html-to-image-api-free.vercel.app/api/render',
-        description: 'Render endpoint. Use your own self-hosted endpoint if preferred',
+        description: 'Render endpoint. Use your own self-hosted endpoint if preferred.',
       },
       {
         displayName: 'Binary Property',
         name: 'binaryPropertyName',
         type: 'string',
         default: 'data',
-        description: 'Property name where the generated PNG will be stored.',
+        description: 'Property name where the generated PNG will be stored',
       },
     ],
   };
