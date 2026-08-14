@@ -1,0 +1,27 @@
+{
+  "name": "n8n-nodes-html-to-image",
+  "version": "1.0.0",
+  "description": "n8n community node for converting HTML and CSS to PNG using the free HTML to Image API.",
+  "license": "MIT",
+  "main": "nodes/HtmlToImage/HtmlToImage.node.js",
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n-nodes",
+    "html",
+    "css",
+    "image",
+    "png",
+    "screenshot"
+  ],
+  "files": [
+    "nodes"
+  ],
+  "n8n": {
+    "nodes": [
+      "nodes/HtmlToImage/HtmlToImage.node.js"
+    ]
+  },
+  "peerDependencies": {
+    "n8n-workflow": ">=1.0.0"
+  }
+}
