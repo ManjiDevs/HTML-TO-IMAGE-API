@@ -11,8 +11,8 @@ export class HtmlToImage implements INodeType {
     displayName: 'HTML to Image',
     name: 'htmlToImage',
     icon: {
-      light: 'file:htmlToImage.svg',
-      dark: 'file:htmlToImage.svg',
+      light: 'file:htmlToImage.light.svg',
+      dark: 'file:htmlToImage.dark.svg',
     },
     group: ['transform'],
     version: 1,
