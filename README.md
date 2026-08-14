@@ -4,7 +4,7 @@ Free, open-source **HTML/CSS → PNG API** powered by Next.js, Puppeteer and Chr
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/ManjiDevs/HTML-TO-IMAGE-API)
 
-**Live API:** https://html-to-image-api-free.vercel.app/api/render
+**Live:** https://html-to-image-api-free.vercel.app/
 
 Convert HTML + CSS into a PNG with one simple request.
 
@@ -13,18 +13,11 @@ Convert HTML + CSS into a PNG with one simple request.
 - Free & open source
 - No API key or authentication
 - No database
-- No external services
 - Self-hostable
 - One-click Vercel deployment
 - Custom image dimensions
 - CORS enabled
-- Input and render protections
-
-## Deploy Your Own
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/ManjiDevs/HTML-TO-IMAGE-API)
-
-No environment variables required.
+- n8n community node included
 
 ## API
 
@@ -36,7 +29,7 @@ Content-Type: application/json
 ```json
 {
   "html": "<h1>Hello</h1>",
-  "css": "body{width:1080px;height:1350px;background:#08090d;color:white}",
+  "css": "body{background:#08090d;color:white}",
   "width": 1080,
   "height": 1350
 }
@@ -44,7 +37,31 @@ Content-Type: application/json
 
 Returns the PNG directly as `image/png`.
 
-### cURL
+## n8n Node
+
+This repository also contains the official **HTML to Image** n8n community node.
+
+Package: `n8n-nodes-html-to-image`
+
+Source: [`/n8n`](./n8n)
+
+The node accepts HTML, CSS, width and height and returns the generated PNG as binary data. It defaults to the public API and supports a custom API URL for self-hosted deployments.
+
+### Install for self-hosted n8n
+
+```bash
+npm install n8n-nodes-html-to-image
+```
+
+Then enable/install it as a community node and restart n8n.
+
+## Deploy Your Own API
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/ManjiDevs/HTML-TO-IMAGE-API)
+
+No environment variables required.
+
+## cURL
 
 ```bash
 curl -X POST "https://html-to-image-api-free.vercel.app/api/render" \
@@ -57,26 +74,6 @@ curl -X POST "https://html-to-image-api-free.vercel.app/api/render" \
   }' --output image.png
 ```
 
-## n8n
-
-Use an **HTTP Request** node:
-
-```text
-POST https://html-to-image-api-free.vercel.app/api/render
-Authentication: None
-Content-Type: application/json
-Response Format: File
-```
-
-```json
-{
-  "html": "={{ $json.html }}",
-  "css": "={{ $json.css }}",
-  "width": 1080,
-  "height": 1350
-}
-```
-
 ## Limits
 
 - HTML: 512 KB
@@ -85,7 +82,7 @@ Response Format: File
 - Height: 100–4000 px
 - 2 concurrent renders per warm instance
 
-There is **no application-level rate limit**. Add your own rate limiting when running a public instance if needed.
+There is no application-level rate limit. Add your own rate limiting when running a public instance if needed.
 
 ## Self-Hosting
 
