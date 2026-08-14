@@ -72,7 +72,7 @@ export class HtmlToImage implements INodeType {
         name: 'binaryPropertyName',
         type: 'string',
         default: 'data',
-        description: 'Property name where the generated PNG will be stored',
+        description: 'Property name where the generated PNG will be stored.',
       },
     ],
   };
